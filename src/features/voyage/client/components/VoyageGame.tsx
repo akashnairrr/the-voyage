@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useReducer, useState } from 'react';
 
 import { jumpBetween, milestonesCrossed } from '../../domain/progression';
-import type { AnswerResult, Round, VoyageRecord, VoyageSetup } from '../../domain/types';
+import type { AnswerResult, Mode, Round, VoyageRecord, VoyageSetup } from '../../domain/types';
+import { createVoyage } from '../../server';
 import { submitAnswer } from '../api';
 import { gameReducer, initialGameState } from '../game-state';
 import { store } from '../storage';
@@ -17,8 +17,17 @@ import { ResultsView } from './ResultsView';
 
 type Phase = { name: 'loading' } | { name: 'playing' } | { name: 'results'; record: VoyageRecord };
 
-export function VoyageGame({ setup }: { setup: VoyageSetup }) {
-  const router = useRouter();
+/** Builds the voyage in the browser, so the daily set follows today's date, not the build date. */
+export function Voyage({ mode }: { mode: Mode }) {
+  const [setup, setSetup] = useState<VoyageSetup | null>(null);
+
+  useEffect(() => setSetup(createVoyage(mode)), [mode]);
+
+  if (!setup) return <main className="page" />;
+  return <VoyageGame key={setup.id} setup={setup} onRestart={() => setSetup(createVoyage(mode))} />;
+}
+
+export function VoyageGame({ setup, onRestart }: { setup: VoyageSetup; onRestart: () => void }) {
   const [phase, setPhase] = useState<Phase>({ name: 'loading' });
   const [game, dispatch] = useReducer(gameReducer, setup.prompts.length, initialGameState);
   const [popup, setPopup] = useState<JumpPopup | null>(null);
@@ -92,7 +101,7 @@ export function VoyageGame({ setup }: { setup: VoyageSetup }) {
           record={phase.record}
           actions={
             setup.mode === 'practice' ? (
-              <button className="btn" onClick={() => router.refresh()}>
+              <button className="btn" onClick={onRestart}>
                 Fly again
               </button>
             ) : (

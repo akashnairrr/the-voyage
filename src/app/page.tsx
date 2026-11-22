@@ -1,24 +1,18 @@
 import Link from 'next/link';
 
-import { DailyStatus } from '@/features/voyage/client/components/DailyStatus';
+import { DailyStatus, MissionDay } from '@/features/voyage/client/components/DailyStatus';
 import { FlightLog } from '@/features/voyage/client/components/JourneyTrack';
-import { dayKeyFor, missionDayFor } from '@/features/voyage/domain/calendar';
 import { GAME_CONFIG, RARITY_TIERS } from '@/features/voyage/domain/config';
 
-// Re-render at least once a minute so the Mission Day rolls over at 00:00 UTC.
-export const revalidate = 60;
-
 export default function HomePage() {
-  const dayKey = dayKeyFor();
-
   return (
     <main className="page">
-      <p className="mission-day">Mission Day {missionDayFor(dayKey).toLocaleString('en-US')}</p>
+      <MissionDay />
       <h1>The Voyage</h1>
       <p className="tagline">Fly Voyager 1 from launch to one light-day. Rare answers take you farther.</p>
 
       <div className="actions">
-        <DailyStatus dayKey={dayKey} />
+        <DailyStatus />
         <Link className="btn" href="/voyage/practice">
           Practice voyage
         </Link>

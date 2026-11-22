@@ -1,6 +1,6 @@
-// Server-side game service. The question bank lives only here; pages and API
-// routes call these functions, and the browser only ever gets PublicPrompts
-// and AnswerResults.
+// Game service. The question bank lives only here; the UI calls these functions
+// and only uses PublicPrompts and AnswerResults. It runs in the browser for the
+// static GitHub Pages build, so answers are readable in the bundle.
 
 import { dayKeyFor, missionDayFor } from '../domain/calendar';
 import { GAME_CONFIG } from '../domain/config';

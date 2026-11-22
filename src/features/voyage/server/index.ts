@@ -1,5 +1,3 @@
-// Entry point for app code. `server-only` makes the build fail if a client
-// component ever imports this, so the question bank can't leak to the browser.
-import 'server-only';
-
+// Entry point for app code. The site is a static export, so this code (and the
+// question bank) ships to the browser. Move it behind an API to hide answers again.
 export { checkAnswer, createVoyage, parseAnswerRequest } from './voyage-service';
