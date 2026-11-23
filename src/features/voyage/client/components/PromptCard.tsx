@@ -7,6 +7,7 @@ import { formatAu, formatKm, formatSpan } from '../../domain/format';
 import type { Milestone } from '../../domain/milestones';
 import type { Jump } from '../../domain/progression';
 import type { AnswerResult, PublicPrompt, Round } from '../../domain/types';
+import { lookFor } from '../tier-style';
 import { useCountdown } from '../use-countdown';
 
 interface PromptCardProps {
@@ -50,13 +51,14 @@ export function PromptCard({ prompt, number, total, check, onLock, onTimeout }: 
   });
   msLeftRef.current = msLeft;
 
-  useEffect(() => inputRef.current?.focus(), []);
+  // Keep focus in the input (also after a wrong guess remounts it to replay the shake),
+  // without scrolling the page away from the space view.
+  useEffect(() => inputRef.current?.focus({ preventScroll: true }), [shake]);
 
   const reject = (message: string) => {
     setNotice(message);
     setShake((n) => n + 1);
     setGuess('');
-    inputRef.current?.focus();
   };
 
   const submit = (e: FormEvent) => {
@@ -96,7 +98,7 @@ export function PromptCard({ prompt, number, total, check, onLock, onTimeout }: 
     <section className="card card--prompt">
       <header className="card__header">
         <span>
-          Transmission {number} / {total}
+          Transmission {number}/{total} <span className={`difficulty difficulty--${prompt.difficulty}`}>{prompt.difficulty}</span>
         </span>
         <span className={`countdown ${urgent ? 'is-urgent' : ''}`}>{seconds}s</span>
       </header>
@@ -118,7 +120,6 @@ export function PromptCard({ prompt, number, total, check, onLock, onTimeout }: 
           spellCheck={false}
           maxLength={100}
           aria-label="Your answer"
-          autoFocus
         />
         <button type="submit" className="btn" disabled={checking || !guess.trim()}>
           {checking ? 'Checking…' : 'Transmit'}
@@ -151,24 +152,26 @@ interface FeedbackCardProps {
 
 export function FeedbackCard({ round, jump, crossed, arrivalDelayMs, isLast, onNext }: FeedbackCardProps) {
   const button = useRef<HTMLButtonElement>(null);
-  useEffect(() => button.current?.focus(), []);
+  useEffect(() => button.current?.focus({ preventScroll: true }), []);
 
   const ok = round.matchedName !== null;
   const tries = round.misses.length;
+  const look = lookFor(round.tier);
 
   return (
-    <section className={`card card--feedback ${ok ? 'is-ok' : 'is-miss'}`}>
+    <section className={`card card--feedback tier-${look.tier}`}>
       <header className="card__header">
         <span>{round.promptText}</span>
       </header>
 
+      <p className="feedback__cheer">{look.cheer}</p>
       <div className="feedback">
         <p className="feedback__answer">
-          {ok ? round.matchedName : round.label === 'Network error' ? 'Transmission failed' : 'Signal lost'}
+          {ok ? round.matchedName : round.label === 'Network error' ? 'Transmission failed' : 'Out of time'}
           {ok && round.fuzzy && <small> (you typed “{round.input}”)</small>}
         </p>
         <p className="feedback__points">{ok ? `+${round.points}` : '+0'}</p>
-        <p className="feedback__tier">{ok ? round.label.split(' · ')[0] : 'Out of time'}</p>
+        <p className="feedback__tier">{ok ? round.label.split(' · ')[0] : 'No answer locked in'}</p>
       </div>
 
       {ok ? (

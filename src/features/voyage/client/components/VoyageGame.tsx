@@ -9,11 +9,13 @@ import { createVoyage } from '../../server';
 import { submitAnswer } from '../api';
 import { gameReducer, initialGameState } from '../game-state';
 import { store } from '../storage';
+import { moodFor } from '../tier-style';
 import { jumpDuration, useTweenedNumber } from '../use-tweened-number';
 import { FlightDeck, type JumpPopup } from './FlightDeck';
 import { FlightLog } from './JourneyTrack';
 import { FeedbackCard, PromptCard } from './PromptCard';
 import { ResultsView } from './ResultsView';
+import { SignalStrip } from './SignalStrip';
 
 type Phase = { name: 'loading' } | { name: 'playing' } | { name: 'results'; record: VoyageRecord };
 
@@ -61,10 +63,9 @@ export function VoyageGame({ setup, onRestart }: { setup: VoyageSetup; onRestart
 
   const resolve = (result: AnswerResult, misses: string[]) => {
     const round: Round = { ...result, promptText: prompt.text, misses };
-    if (round.points > 0) {
-      const jump = jumpBetween(game.totalPoints, game.totalPoints + round.points);
-      setPopup({ ...jump, id: Date.now() });
-    }
+    // Every answer fires the viewport: a big burst for rare answers, a puff for obvious ones, smoke for a miss.
+    const jump = jumpBetween(game.totalPoints, game.totalPoints + round.points);
+    setPopup({ ...jump, tier: round.tier ?? 0, id: Date.now() });
     dispatch({ type: 'resolved', round });
   };
 
@@ -117,6 +118,7 @@ export function VoyageGame({ setup, onRestart }: { setup: VoyageSetup; onRestart
 
   const lastRound = game.rounds[game.index];
   const pointsBefore = game.totalPoints - (lastRound?.points ?? 0);
+  const mood = moodFor(game.rounds.map((r) => r.tier));
 
   return (
     <main className="page page--wide">
@@ -124,10 +126,13 @@ export function VoyageGame({ setup, onRestart }: { setup: VoyageSetup; onRestart
         <span className="mission-day">
           {setup.mode === 'daily' ? `Mission Day ${setup.missionDay.toLocaleString('en-US')}` : 'Practice voyage'}
         </span>
-        <span className="points">{Math.round(shownPoints)} pts</span>
+        <SignalStrip rounds={game.rounds} total={setup.prompts.length} current={game.index} />
+        <span className={`points mood-${mood}`}>
+          {Math.round(shownPoints)} <small>pts</small>
+        </span>
       </div>
 
-      <FlightDeck points={shownPoints} jump={popup} />
+      <FlightDeck points={shownPoints} jump={popup} mood={mood} />
 
       <div className="voyage__body">
         {game.status === 'playing' && (

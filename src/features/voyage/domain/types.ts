@@ -12,6 +12,7 @@ export function isMode(value: string): value is Mode {
 export interface PublicPrompt {
   id: string;
   text: string;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 /** Everything the client needs to start a voyage. */

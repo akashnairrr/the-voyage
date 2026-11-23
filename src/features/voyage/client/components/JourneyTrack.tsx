@@ -1,53 +1,35 @@
+import type { CSSProperties } from 'react';
+
 import { MILESTONES } from '../../domain/milestones';
-import { formatAu, formatKm, formatLightTime, formatLongDate, formatMissionDate } from '../../domain/format';
+import { formatLongDate } from '../../domain/format';
 import { milestonePoints, positionForPoints } from '../../domain/progression';
 
-/** Horizontal progress bar with milestone ticks and the spacecraft marker. */
+const SEGMENTS = 40;
+
+/** Chunky segmented progress bar, milestone notches above, the craft riding the front. */
 export function JourneyBar({ points }: { points: number }) {
   const pos = positionForPoints(points);
   const pct = Math.min(pos.progress, 1) * 100;
+  const lit = Math.floor((pct / 100) * SEGMENTS);
   return (
-    <div className="journey-bar" aria-label={`Journey ${pct.toFixed(0)}% complete`}>
-      <div className="journey-bar__fill" style={{ width: `${pct}%` }} />
+    <div className="journey-bar" role="progressbar" aria-valuenow={Math.floor(pct)} aria-valuemin={0} aria-valuemax={100}>
+      <div className="journey-bar__track">
+        {Array.from({ length: SEGMENTS }, (_, i) => (
+          <span key={i} className={`journey-bar__seg ${i < lit ? 'is-lit' : ''}`} style={{ '--i': i } as CSSProperties} />
+        ))}
+      </div>
       {MILESTONES.map((m) => (
         <span
           key={m.id}
-          className={`journey-bar__tick ${pos.progress >= m.at ? 'is-reached' : ''}`}
+          className={`journey-bar__notch ${pos.progress >= m.at ? 'is-reached' : ''}`}
           style={{ left: `${m.at * 100}%` }}
           title={m.title}
         />
       ))}
       <span className="journey-bar__ship" style={{ left: `${pct}%` }}>
-        ▲
+        ▶
       </span>
     </div>
-  );
-}
-
-/** Live mission readout for a points total. */
-export function Telemetry({ points }: { points: number }) {
-  const pos = positionForPoints(points);
-  return (
-    <dl className="telemetry">
-      <div>
-        <dt>Mission date</dt>
-        <dd>{formatMissionDate(pos.date)}</dd>
-      </div>
-      <div>
-        <dt>Distance</dt>
-        <dd>
-          {formatAu(pos.au)} <small>· {formatKm(pos.km)}</small>
-        </dd>
-      </div>
-      <div>
-        <dt>Signal delay</dt>
-        <dd>{formatLightTime(pos.lightMinutes)}</dd>
-      </div>
-      <div>
-        <dt>Next</dt>
-        <dd>{pos.next ? `${pos.next.title} in ${pos.pointsToNext} pts` : 'Beyond the known journey'}</dd>
-      </div>
-    </dl>
   );
 }
 

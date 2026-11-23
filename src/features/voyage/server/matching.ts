@@ -42,16 +42,26 @@ export interface MatchResult {
   fuzzy: boolean;
 }
 
+/** "black holes" -> "black hole", "comets" -> "comet". Only tried as a fallback. */
+function singular(word: string): string | null {
+  if (word.length > 4 && word.endsWith('es') && !word.endsWith('ses')) return word.slice(0, -2);
+  if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss')) return word.slice(0, -1);
+  return null;
+}
+
 export function matchAnswer(prompt: Prompt, input: string): MatchResult | null {
   const guess = normalize(input);
   if (!guess) return null;
+  const singularGuess = singular(guess);
 
   let best: { answer: Answer; distance: number } | null = null;
+  let plural: Answer | null = null;
 
   for (const answer of prompt.answers) {
     for (const form of [answer.name, ...answer.aliases]) {
       const target = normalize(form);
       if (target === guess) return { answer, fuzzy: false };
+      if (singularGuess === target) plural ??= answer;
       const d = levenshtein(guess, target);
       if (d <= allowedTypos(target.length) && (!best || d < best.distance)) {
         best = { answer, distance: d };
@@ -59,5 +69,6 @@ export function matchAnswer(prompt: Prompt, input: string): MatchResult | null {
     }
   }
 
+  if (plural) return { answer: plural, fuzzy: false };
   return best ? { answer: best.answer, fuzzy: true } : null;
 }

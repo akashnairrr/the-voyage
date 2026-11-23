@@ -23,12 +23,45 @@ test('matching: exact, alias, typo, and short names stay strict', () => {
   assert.equal(matchAnswer(prompt('uranus-moons'), 'Titania')?.answer.name, 'Titania');
 });
 
-test('question bank: unique answers, enough answers, enough prompts for a voyage', () => {
-  assert.ok(PROMPTS.length >= GAME_CONFIG.promptsPerVoyage);
+test('question bank: unique answers and enough prompts at every difficulty', () => {
+  for (const level of ['easy', 'medium', 'hard'] as const) {
+    assert.ok(PROMPTS.filter((p) => p.difficulty === level).length >= GAME_CONFIG.voyageMix[level], level);
+  }
   for (const p of PROMPTS) {
-    const names = p.answers.map((a) => normalize(a.name));
-    assert.equal(new Set(names).size, names.length, `duplicate answer in ${p.id}`);
+    const forms = p.answers.flatMap((a) => [a.name, ...a.aliases].map(normalize));
+    assert.equal(new Set(forms).size, forms.length, `duplicate answer or alias in ${p.id}`);
     assert.ok(p.answers.length >= 4, `${p.id} has too few answers`);
+  }
+});
+
+test('only 1-2 answers per prompt score the max; the rest are spread evenly', () => {
+  for (const p of PROMPTS) {
+    const top = p.answers.filter((a) => a.tier === 6).length;
+    assert.ok(top >= 1 && top <= 2, `${p.id} has ${top} top-tier answers`);
+    const rest = p.answers.length - top;
+    if (rest < 5) continue;
+    const counts = [1, 2, 3, 4, 5].map((t) => p.answers.filter((a) => a.tier === t).length);
+    assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `${p.id} tiers uneven: ${counts}`);
+  }
+});
+
+test('tiers follow list order: the last answers are the rarest', () => {
+  assert.equal(matchAnswer(prompt('planets'), 'Earth')?.answer.tier, 1);
+  assert.equal(matchAnswer(prompt('planets'), 'Uranus')?.answer.tier, 6);
+});
+
+test('plurals match: "black holes" counts as Black Hole', () => {
+  assert.equal(matchAnswer(prompt('space-objects'), 'black holes')?.answer.name, 'Black Hole');
+  assert.equal(matchAnswer(prompt('space-objects'), 'comets')?.answer.name, 'Comet');
+  assert.equal(matchAnswer(prompt('planets'), 'Mars')?.answer.name, 'Mars');
+});
+
+test('a voyage plays easy prompts first and hard ones last', () => {
+  const picked = pickPrompts('practice', '2026-11-23');
+  assert.equal(picked.length, GAME_CONFIG.promptsPerVoyage);
+  const order = { easy: 0, medium: 1, hard: 2 };
+  for (let i = 1; i < picked.length; i++) {
+    assert.ok(order[picked[i].difficulty] >= order[picked[i - 1].difficulty]);
   }
 });
 
@@ -41,7 +74,7 @@ test('daily voyage is the same all day; practice gets a fresh id', () => {
 
 test('the setup sent to the browser contains no answers', () => {
   const setup = createVoyage('daily');
-  for (const p of setup.prompts) assert.deepEqual(Object.keys(p).sort(), ['id', 'text']);
+  for (const p of setup.prompts) assert.deepEqual(Object.keys(p).sort(), ['difficulty', 'id', 'text']);
 });
 
 test('checkAnswer scores, reveals rarer answers, handles timeouts and unknown prompts', () => {

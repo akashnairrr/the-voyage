@@ -7,17 +7,24 @@ import { GAME_CONFIG } from '../domain/config';
 import { hashString, seededRandom, shuffle } from '../domain/random';
 import type { AnswerRequest, AnswerResult, Mode, PublicPrompt, VoyageSetup } from '../domain/types';
 import { matchAnswer } from './matching';
-import { PROMPTS, type Prompt } from './prompts';
+import { PROMPTS, type Difficulty, type Prompt } from './prompts';
 import { scoreAnswer } from './scoring';
 
 const MAX_INPUT_LENGTH = 100;
 
-export function pickPrompts(mode: Mode, dayKey: string, count: number = GAME_CONFIG.promptsPerVoyage): Prompt[] {
+/** Picks the voyage's prompts: easy ones first, hard ones last (see GAME_CONFIG.voyageMix). */
+export function pickPrompts(mode: Mode, dayKey: string): Prompt[] {
   const rand = mode === 'daily' ? seededRandom(hashString(`the-voyage:${dayKey}`)) : Math.random;
-  return shuffle(PROMPTS, rand).slice(0, Math.min(count, PROMPTS.length));
+  const levels: Difficulty[] = ['easy', 'medium', 'hard'];
+  return levels.flatMap((level) =>
+    shuffle(
+      PROMPTS.filter((p) => p.difficulty === level),
+      rand,
+    ).slice(0, GAME_CONFIG.voyageMix[level]),
+  );
 }
 
-const toPublic = (p: Prompt): PublicPrompt => ({ id: p.id, text: p.text });
+const toPublic = (p: Prompt): PublicPrompt => ({ id: p.id, text: p.text, difficulty: p.difficulty });
 
 export function createVoyage(mode: Mode, now: Date = new Date()): VoyageSetup {
   const dayKey = dayKeyFor(now);

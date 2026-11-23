@@ -3,6 +3,8 @@
 export const GAME_CONFIG = {
   /** Prompts per voyage (Krillion-style daily run). */
   promptsPerVoyage: 8,
+  /** How each voyage is built, played in this order: a gentle start, a hard finish. */
+  voyageMix: { easy: 3, medium: 3, hard: 2 },
   /** Seconds the player has to answer each prompt. */
   secondsPerPrompt: 30,
   /**
@@ -21,11 +23,11 @@ export const GAME_CONFIG = {
  * tier into points. Swap the metric later without touching the question bank.
  */
 export const RARITY_TIERS = [
-  { tier: 1, name: 'Ground Control', points: 10 },
+  { tier: 1, name: 'Launchpad', points: 10 },
   { tier: 2, name: 'Low Orbit', points: 25 },
-  { tier: 3, name: 'Gas Giant', points: 40 },
-  { tier: 4, name: 'Heliosheath', points: 60 },
-  { tier: 5, name: 'Interstellar', points: 80 },
+  { tier: 3, name: 'Moonshot', points: 40 },
+  { tier: 4, name: 'Ring Runner', points: 60 },
+  { tier: 5, name: 'Deep Space', points: 80 },
   { tier: 6, name: 'Golden Record', points: 100 },
 ] as const;
 

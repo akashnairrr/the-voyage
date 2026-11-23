@@ -1,9 +1,17 @@
-// Pilot question bank. Every prompt has many valid answers; each answer has a
-// placeholder rarity tier (1 = obvious, 6 = obscure). The tiers are
-// hand-estimated for the pilot — once real players exist, replace them with
-// tiers computed from how often each answer is actually given.
+// Question bank.
+//
+// Each prompt lists its valid answers from MOST common to RAREST. Tiers come
+// from that order (see `ranked`), so to tune a prompt you only reorder its list:
+//   - the last answer (last two for lists of 15+) is the top tier, 100 pts
+//   - everything else is split evenly across tiers 1–5
+// Write "Name|alias|alias" to accept other spellings.
+//
+// The order is hand-estimated for the pilot. Once real players exist, sort
+// each list by how often answers are actually given.
 
 import type { Tier } from '../domain/config';
+
+export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface Answer {
   name: string;
@@ -14,183 +22,176 @@ export interface Answer {
 export interface Prompt {
   id: string;
   text: string;
+  difficulty: Difficulty;
   answers: Answer[];
 }
 
-const a = (tier: Tier, name: string, ...aliases: string[]): Answer => ({ name, aliases, tier });
+/** How many answers get the top tier: 1, or 2 for long lists. */
+export const topTierCount = (answers: number) => (answers >= 15 ? 2 : 1);
+
+/** Tier for the answer at `index` in a list of `count`, ranked common -> rare. */
+export function tierForRank(index: number, count: number): Tier {
+  const rest = count - topTierCount(count);
+  if (index >= rest) return 6;
+  return (1 + Math.floor((index * 5) / rest)) as Tier;
+}
+
+function ranked(id: string, difficulty: Difficulty, text: string, entries: string[]): Prompt {
+  return {
+    id,
+    text,
+    difficulty,
+    answers: entries.map((entry, i) => {
+      const [name, ...aliases] = entry.split('|');
+      return { name, aliases, tier: tierForRank(i, entries.length) };
+    }),
+  };
+}
 
 export const PROMPTS: Prompt[] = [
-  {
-    id: 'voyager-planets',
-    text: 'Name a planet that either Voyager spacecraft flew past.',
-    answers: [a(1, 'Jupiter'), a(2, 'Saturn'), a(3, 'Neptune'), a(4, 'Uranus')],
-  },
-  {
-    id: 'jupiter-moons',
-    text: 'Name a moon of Jupiter.',
-    answers: [
-      a(1, 'Io'), a(1, 'Europa'), a(2, 'Ganymede'), a(3, 'Callisto'),
-      a(5, 'Amalthea'), a(5, 'Himalia'), a(6, 'Thebe'), a(6, 'Metis'),
-      a(6, 'Adrastea'), a(6, 'Elara'), a(6, 'Pasiphae'), a(6, 'Sinope'),
-      a(6, 'Carme'), a(6, 'Ananke'), a(6, 'Leda'), a(6, 'Lysithea'),
-      a(6, 'Themisto'), a(6, 'Callirrhoe'),
-    ],
-  },
-  {
-    id: 'saturn-moons',
-    text: 'Name a moon of Saturn.',
-    answers: [
-      a(1, 'Titan'), a(2, 'Enceladus'), a(3, 'Mimas'), a(3, 'Rhea'),
-      a(4, 'Iapetus'), a(4, 'Dione'), a(4, 'Tethys'), a(5, 'Hyperion'),
-      a(5, 'Phoebe'), a(5, 'Janus'), a(6, 'Epimetheus'), a(6, 'Pan'),
-      a(6, 'Atlas'), a(6, 'Prometheus'), a(6, 'Pandora'), a(6, 'Daphnis'),
-      a(6, 'Helene'), a(6, 'Telesto'), a(6, 'Calypso'),
-    ],
-  },
-  {
-    id: 'uranus-moons',
-    text: 'Name a moon of Uranus.',
-    answers: [
-      a(2, 'Miranda'), a(2, 'Titania'), a(2, 'Oberon'), a(3, 'Ariel'),
-      a(4, 'Umbriel'), a(5, 'Puck'), a(6, 'Cordelia'), a(6, 'Ophelia'),
-      a(6, 'Bianca'), a(6, 'Cressida'), a(6, 'Desdemona'), a(6, 'Juliet'),
-      a(6, 'Portia'), a(6, 'Rosalind'), a(6, 'Belinda'), a(6, 'Perdita'),
-      a(6, 'Mab'), a(6, 'Cupid'), a(6, 'Caliban'), a(6, 'Sycorax'),
-      a(6, 'Prospero'), a(6, 'Setebos'), a(6, 'Stephano'), a(6, 'Trinculo'),
-      a(6, 'Francisco'), a(6, 'Margaret'), a(6, 'Ferdinand'),
-    ],
-  },
-  {
-    id: 'neptune-moons',
-    text: 'Name a moon of Neptune.',
-    answers: [
-      a(1, 'Triton'), a(3, 'Nereid'), a(4, 'Proteus'), a(5, 'Larissa'),
-      a(6, 'Galatea'), a(6, 'Despina'), a(6, 'Thalassa'), a(6, 'Naiad'),
-      a(6, 'Halimede'), a(6, 'Sao'), a(6, 'Laomedeia'), a(6, 'Psamathe'),
-      a(6, 'Neso'), a(6, 'Hippocamp'),
-    ],
-  },
-  {
-    id: 'dwarf-planets',
-    text: 'Name a dwarf planet (or a widely accepted candidate).',
-    answers: [
-      a(1, 'Pluto'), a(2, 'Ceres'), a(3, 'Eris'), a(4, 'Haumea'),
-      a(4, 'Makemake'), a(5, 'Sedna'), a(5, 'Quaoar'), a(6, 'Gonggong'),
-      a(6, 'Orcus'), a(6, 'Salacia'),
-    ],
-  },
-  {
-    id: 'space-agencies',
-    text: 'Name a national or international space agency.',
-    answers: [
-      a(1, 'NASA', 'National Aeronautics and Space Administration'),
-      a(2, 'ISRO', 'Indian Space Research Organisation', 'Indian Space Research Organization'),
-      a(2, 'ESA', 'European Space Agency'),
-      a(3, 'JAXA', 'Japan Aerospace Exploration Agency'),
-      a(3, 'Roscosmos'),
-      a(4, 'CNSA', 'China National Space Administration'),
-      a(4, 'CSA', 'Canadian Space Agency'),
-      a(5, 'UK Space Agency', 'UKSA'),
-      a(5, 'DLR', 'German Aerospace Center'),
-      a(5, 'CNES'),
-      a(6, 'ASI', 'Italian Space Agency'),
-      a(6, 'KASA', 'Korea AeroSpace Administration', 'KARI'),
-      a(6, 'UAE Space Agency'),
-      a(6, 'Australian Space Agency'),
-      a(6, 'Israel Space Agency'),
-      a(6, 'SUPARCO'),
-      a(6, 'Brazilian Space Agency', 'AEB'),
-    ],
-  },
-  {
-    id: 'constellations',
-    text: 'Name a constellation.',
-    answers: [
-      a(1, 'Orion'), a(1, 'Ursa Major', 'Great Bear'), a(2, 'Cassiopeia'),
-      a(2, 'Scorpius', 'Scorpio'), a(2, 'Leo'), a(2, 'Taurus'), a(2, 'Gemini'),
-      a(2, 'Sagittarius'), a(2, 'Aries'), a(2, 'Virgo'), a(2, 'Libra'),
-      a(2, 'Aquarius'), a(2, 'Pisces'), a(2, 'Cancer'),
-      a(3, 'Capricornus', 'Capricorn'), a(3, 'Ursa Minor', 'Little Bear'),
-      a(3, 'Cygnus'), a(3, 'Andromeda'), a(3, 'Perseus'), a(3, 'Pegasus'),
-      a(4, 'Lyra'), a(4, 'Draco'), a(4, 'Aquila'), a(4, 'Centaurus'),
-      a(4, 'Crux', 'Southern Cross'), a(4, 'Hercules'), a(4, 'Canis Major'),
-      a(5, 'Bootes'), a(5, 'Auriga'), a(5, 'Cepheus'), a(5, 'Ophiuchus'),
-      a(5, 'Carina'), a(5, 'Canis Minor'), a(5, 'Hydra'), a(5, 'Delphinus'),
-      a(5, 'Phoenix'), a(6, 'Monoceros'), a(6, 'Camelopardalis'),
-      a(6, 'Fornax'), a(6, 'Sculptor'), a(6, 'Pictor'), a(6, 'Reticulum'),
-      a(6, 'Vulpecula'), a(6, 'Lacerta'), a(6, 'Lupus'), a(6, 'Corvus'),
-      a(6, 'Sagitta'), a(6, 'Musca'), a(6, 'Chamaeleon'), a(6, 'Tucana'),
-      a(6, 'Volans'), a(6, 'Horologium'), a(6, 'Octans'), a(6, 'Norma'),
-      a(6, 'Indus'), a(6, 'Pavo'), a(6, 'Grus'),
-    ],
-  },
-  {
-    id: 'nasa-missions',
-    text: 'Name a NASA mission or spacecraft (past or present).',
-    answers: [
-      a(1, 'Apollo'), a(1, 'Voyager'), a(2, 'Hubble', 'Hubble Space Telescope'),
-      a(2, 'Artemis'), a(2, 'James Webb', 'JWST', 'James Webb Space Telescope', 'Webb'),
-      a(2, 'Curiosity'), a(2, 'Perseverance'), a(3, 'Cassini', 'Cassini-Huygens'),
-      a(3, 'Juno'), a(3, 'New Horizons'), a(3, 'Pioneer'), a(3, 'Opportunity'),
-      a(4, 'Galileo'), a(4, 'Kepler'), a(4, 'Viking'), a(4, 'Gemini'),
-      a(4, 'Mercury', 'Project Mercury'), a(4, 'Skylab'), a(4, 'Spirit'),
-      a(4, 'Parker Solar Probe', 'Parker'), a(4, 'Europa Clipper'), a(4, 'Ingenuity'),
-      a(5, 'Mariner'), a(5, 'Spitzer'), a(5, 'Chandra'), a(5, 'Dawn'),
-      a(5, 'MESSENGER'), a(5, 'Magellan'), a(5, 'InSight'), a(5, 'OSIRIS-REx', 'OSIRIS REx'),
-      a(5, 'DART'), a(5, 'TESS'), a(5, 'Sojourner'), a(6, 'Lucy'), a(6, 'Psyche'),
-      a(6, 'Stardust'), a(6, 'Deep Impact'), a(6, 'GRAIL'), a(6, 'MAVEN'),
-      a(6, 'LRO', 'Lunar Reconnaissance Orbiter'), a(6, 'WISE', 'NEOWISE'),
-    ],
-  },
-  {
-    id: 'astronomers',
-    text: 'Name a famous astronomer or space scientist (surname is enough).',
-    answers: [
-      a(1, 'Galileo Galilei', 'Galileo'), a(2, 'Nicolaus Copernicus', 'Copernicus'),
-      a(2, 'Johannes Kepler', 'Kepler'), a(2, 'Isaac Newton', 'Newton'),
-      a(2, 'Stephen Hawking', 'Hawking'), a(3, 'Edwin Hubble', 'Hubble'),
-      a(3, 'Carl Sagan', 'Sagan'), a(3, 'Neil deGrasse Tyson', 'Tyson', 'deGrasse Tyson'),
-      a(4, 'Tycho Brahe', 'Tycho', 'Brahe'), a(4, 'Edmond Halley', 'Halley'),
-      a(4, 'William Herschel', 'Herschel'), a(4, 'Ptolemy'), a(4, 'Aryabhata'),
-      a(5, 'Gerard Kuiper', 'Kuiper'), a(5, 'Vera Rubin', 'Rubin'),
-      a(5, 'Giovanni Cassini', 'Cassini'), a(5, 'Christiaan Huygens', 'Huygens'),
-      a(5, 'Charles Messier', 'Messier'), a(5, 'Clyde Tombaugh', 'Tombaugh'),
-      a(5, 'Subrahmanyan Chandrasekhar', 'Chandrasekhar'),
-      a(5, 'Arthur Eddington', 'Eddington'),
-      a(6, 'Henrietta Swan Leavitt', 'Leavitt', 'Henrietta Leavitt'),
-      a(6, 'Annie Jump Cannon', 'Cannon'), a(6, 'Jocelyn Bell Burnell', 'Bell Burnell'),
-      a(6, 'Urbain Le Verrier', 'Le Verrier', 'Leverrier'), a(6, 'Johann Galle', 'Galle'),
-      a(6, 'Brahmagupta'), a(6, 'Hipparchus'),
-      a(6, 'Cecilia Payne-Gaposchkin', 'Payne-Gaposchkin', 'Cecilia Payne'),
-      a(6, 'Percival Lowell', 'Lowell'), a(6, 'Frank Drake', 'Drake'),
-    ],
-  },
-  {
-    id: 'golden-record-music',
-    text: 'Name a composer or musician whose music is on the Voyager Golden Record.',
-    answers: [
-      a(2, 'Johann Sebastian Bach', 'Bach', 'J.S. Bach'),
-      a(2, 'Ludwig van Beethoven', 'Beethoven'),
-      a(3, 'Wolfgang Amadeus Mozart', 'Mozart'), a(3, 'Chuck Berry', 'Berry'),
-      a(4, 'Igor Stravinsky', 'Stravinsky'), a(4, 'Louis Armstrong', 'Armstrong'),
-      a(5, 'Blind Willie Johnson'), a(6, 'Kesarbai Kerkar', 'Kerkar'),
-      a(6, 'Valya Balkanska', 'Balkanska'), a(6, 'Guan Pinghu'),
-      a(6, 'Anthony Holborne', 'Holborne'),
-    ],
-  },
-  {
-    id: 'stars',
-    text: 'Name a star other than the Sun.',
-    answers: [
-      a(1, 'Sirius'), a(1, 'Polaris', 'North Star', 'Pole Star'), a(2, 'Betelgeuse'),
-      a(3, 'Vega'), a(3, 'Rigel'), a(3, 'Alpha Centauri', 'Rigil Kentaurus'),
-      a(3, 'Proxima Centauri', 'Proxima'), a(4, 'Arcturus'), a(4, 'Aldebaran'),
-      a(4, 'Antares'), a(4, 'Canopus'), a(5, 'Capella'), a(5, 'Altair'),
-      a(5, 'Deneb'), a(5, 'Spica'), a(5, 'Pollux'), a(5, 'Castor'), a(5, 'Regulus'),
-      a(6, 'Fomalhaut'), a(6, 'Achernar'), a(6, 'Bellatrix'), a(6, 'Mira'),
-      a(6, 'Algol'), a(6, "Barnard's Star", 'Barnards Star'), a(6, 'Gliese 445'),
-      a(6, 'Mizar'), a(6, 'Alcor'), a(6, 'Thuban'), a(6, 'Eta Carinae'),
-      a(6, "Tabby's Star", 'Tabbys Star'),
-    ],
-  },
+  // ---------- Easy ----------
+  ranked('planets', 'easy', 'Name a planet in our solar system.', [
+    'Earth', 'Mars', 'Jupiter', 'Saturn', 'Venus', 'Mercury', 'Neptune', 'Uranus',
+  ]),
+  ranked('moon-phases', 'easy', 'Name a phase of the Moon.', [
+    'Full Moon|Full', 'New Moon|New', 'Half Moon|Half', 'Crescent Moon|Crescent',
+    'Gibbous Moon|Gibbous', 'First Quarter|First Quarter Moon',
+    'Last Quarter|Third Quarter|Last Quarter Moon|Third Quarter Moon',
+    'Waxing Crescent', 'Waning Gibbous', 'Waxing Gibbous', 'Waning Crescent',
+  ]),
+  ranked('space-objects', 'easy', 'Name a type of object you can find in space.', [
+    'Star', 'Planet', 'Moon', 'Comet', 'Asteroid', 'Black Hole', 'Galaxy', 'Meteor',
+    'Nebula', 'Satellite', 'Dwarf Planet', 'Supernova', 'Meteorite', 'Neutron Star',
+    'White Dwarf', 'Red Giant', 'Exoplanet', 'Quasar', 'Pulsar', 'Brown Dwarf',
+    'Star Cluster|Cluster|Globular Cluster', 'Meteoroid', 'Magnetar', 'Blazar',
+  ]),
+  ranked('astronauts', 'easy', 'Name an astronaut or cosmonaut (surname is enough).', [
+    'Neil Armstrong|Armstrong', 'Buzz Aldrin|Aldrin', 'Yuri Gagarin|Gagarin',
+    'Kalpana Chawla|Chawla', 'Sunita Williams|Suni Williams', 'Rakesh Sharma',
+    'Valentina Tereshkova|Tereshkova', 'Sally Ride', 'John Glenn', 'Michael Collins',
+    'Shubhanshu Shukla|Shukla', 'Alan Shepard|Shepard', 'Chris Hadfield|Hadfield',
+    'Mae Jemison|Jemison', 'Jim Lovell|Lovell', 'Scott Kelly', 'Tim Peake|Peake',
+    'Gene Cernan|Cernan', 'Alexei Leonov|Leonov', 'Christina Koch',
+    'Peggy Whitson|Whitson', 'Samantha Cristoforetti|Cristoforetti',
+    'Thomas Pesquet|Pesquet', 'Pete Conrad', 'Gus Grissom|Grissom', 'Yang Liwei',
+  ]),
+  ranked('space-movies', 'easy', 'Name a movie set in space or on another world.', [
+    'Star Wars', 'Interstellar', 'Gravity', 'The Martian', 'Avatar', 'Star Trek',
+    'Alien', 'Guardians of the Galaxy', 'Apollo 13', 'Dune', 'WALL-E|Walle',
+    '2001: A Space Odyssey|2001|A Space Odyssey|Space Odyssey', 'Armageddon', 'Passengers',
+    'Ad Astra', 'Lightyear', 'First Man', 'Prometheus', 'Elysium', 'Event Horizon',
+    'Sunshine', 'Moon', 'Life', 'Mission to Mars', 'Solaris', 'Red Planet',
+  ]),
+  ranked('space-agencies', 'easy', 'Name a national or international space agency.', [
+    'NASA|National Aeronautics and Space Administration',
+    'ISRO|Indian Space Research Organisation|Indian Space Research Organization',
+    'ESA|European Space Agency', 'Roscosmos', 'JAXA|Japan Aerospace Exploration Agency',
+    'CNSA|China National Space Administration', 'CSA|Canadian Space Agency',
+    'UK Space Agency|UKSA', 'CNES', 'DLR|German Aerospace Center', 'ASI|Italian Space Agency',
+    'UAE Space Agency', 'KASA|Korea AeroSpace Administration|KARI', 'Australian Space Agency',
+    'Israel Space Agency', 'SUPARCO', 'Brazilian Space Agency|AEB',
+  ]),
+  ranked('constellations', 'easy', 'Name a constellation.', [
+    'Orion', 'Ursa Major|Great Bear', 'Leo', 'Scorpius|Scorpio', 'Taurus', 'Gemini',
+    'Sagittarius', 'Aries', 'Virgo', 'Libra', 'Aquarius', 'Pisces', 'Cancer',
+    'Capricornus|Capricorn', 'Cassiopeia', 'Ursa Minor|Little Bear', 'Andromeda', 'Pegasus',
+    'Cygnus', 'Perseus', 'Draco', 'Hercules', 'Lyra', 'Aquila', 'Centaurus',
+    'Crux|Southern Cross', 'Canis Major', 'Canis Minor', 'Hydra', 'Phoenix', 'Bootes',
+    'Auriga', 'Cepheus', 'Ophiuchus', 'Carina', 'Delphinus', 'Lupus', 'Corvus', 'Sagitta',
+    'Vulpecula', 'Lacerta', 'Monoceros', 'Fornax', 'Sculptor', 'Pictor', 'Reticulum',
+    'Musca', 'Chamaeleon', 'Tucana', 'Volans', 'Horologium', 'Octans', 'Norma', 'Indus',
+    'Pavo', 'Grus', 'Camelopardalis', 'Microscopium',
+  ]),
+
+  // ---------- Medium ----------
+  ranked('voyager-planets', 'medium', 'Name a planet that either Voyager spacecraft flew past.', [
+    'Jupiter', 'Saturn', 'Neptune', 'Uranus',
+  ]),
+  ranked('stars', 'medium', 'Name a star other than the Sun.', [
+    'Sirius', 'Polaris|North Star|Pole Star', 'Betelgeuse', 'Alpha Centauri|Rigil Kentaurus',
+    'Proxima Centauri|Proxima', 'Vega', 'Rigel', 'Arcturus', 'Aldebaran', 'Antares',
+    'Canopus', 'Altair', 'Deneb', 'Capella', 'Spica', 'Pollux', 'Castor', 'Regulus',
+    'Fomalhaut', 'Bellatrix', 'Achernar', 'Algol', 'Mira', 'Mizar', 'Alcor',
+    "Barnard's Star", 'Eta Carinae', 'Thuban', "Tabby's Star",
+    'Gliese 445',
+  ]),
+  ranked('jupiter-moons', 'medium', 'Name a moon of Jupiter.', [
+    'Io', 'Europa', 'Ganymede', 'Callisto', 'Amalthea', 'Himalia', 'Thebe', 'Metis',
+    'Adrastea', 'Elara', 'Pasiphae', 'Sinope', 'Carme', 'Ananke', 'Leda', 'Lysithea',
+    'Themisto', 'Callirrhoe',
+  ]),
+  ranked('saturn-moons', 'medium', 'Name a moon of Saturn.', [
+    'Titan', 'Enceladus', 'Mimas', 'Rhea', 'Iapetus', 'Dione', 'Tethys', 'Hyperion',
+    'Phoebe', 'Janus', 'Epimetheus', 'Pan', 'Atlas', 'Prometheus', 'Pandora', 'Daphnis',
+    'Helene', 'Telesto', 'Calypso',
+  ]),
+  ranked('dwarf-planets', 'medium', 'Name a dwarf planet (or a widely accepted candidate).', [
+    'Pluto', 'Ceres', 'Eris', 'Makemake', 'Haumea', 'Sedna', 'Quaoar', 'Orcus', 'Gonggong',
+    'Salacia',
+  ]),
+  ranked('nasa-missions', 'medium', 'Name a NASA mission or spacecraft (past or present).', [
+    'Apollo', 'Voyager', 'Hubble|Hubble Space Telescope',
+    'James Webb|JWST|James Webb Space Telescope|Webb', 'Artemis', 'Curiosity', 'Perseverance',
+    'Cassini|Cassini-Huygens', 'Juno', 'New Horizons', 'Pioneer', 'Opportunity', 'Spirit',
+    'Galileo', 'Kepler', 'Viking', 'Gemini', 'Mercury|Project Mercury', 'Skylab',
+    'Parker Solar Probe|Parker', 'Ingenuity', 'Europa Clipper', 'Mariner', 'Spitzer',
+    'Chandra', 'Dawn', 'InSight', 'OSIRIS-REx', 'DART', 'TESS', 'Sojourner',
+    'MESSENGER', 'Magellan', 'Lucy', 'Psyche', 'Stardust', 'Deep Impact', 'MAVEN',
+    'LRO|Lunar Reconnaissance Orbiter', 'WISE|NEOWISE', 'GRAIL',
+  ]),
+  ranked('rockets', 'medium', 'Name a rocket or launch vehicle.', [
+    'Saturn V|Saturn 5', 'Falcon 9', 'Starship', 'Space Shuttle', 'PSLV', 'GSLV', 'Falcon Heavy',
+    'Soyuz', 'SLS|Space Launch System', 'Ariane 5', 'LVM3|GSLV Mk III|GSLV Mark III',
+    'Atlas V', 'Ariane 6', 'Long March', 'New Glenn', 'Delta IV|Delta IV Heavy', 'Electron',
+    'Vostok', 'Titan|Titan IIIE', 'Proton', 'Vulcan|Vulcan Centaur', 'H3', 'H-IIA|H2A',
+    'Vega', 'Antares', 'Redstone', 'Energia', 'N1',
+  ]),
+  ranked('astronomers', 'medium', 'Name a famous astronomer or space scientist (surname is enough).', [
+    'Galileo Galilei|Galileo', 'Isaac Newton|Newton', 'Stephen Hawking|Hawking',
+    'Nicolaus Copernicus|Copernicus', 'Johannes Kepler|Kepler', 'Albert Einstein|Einstein',
+    'Edwin Hubble|Hubble', 'Carl Sagan|Sagan', 'Neil deGrasse Tyson|Tyson|deGrasse Tyson',
+    'Aryabhata', 'Vikram Sarabhai|Sarabhai', 'A. P. J. Abdul Kalam|Abdul Kalam|APJ Abdul Kalam|Kalam',
+    'Tycho Brahe|Tycho|Brahe', 'Edmond Halley|Halley', 'Ptolemy', 'William Herschel|Herschel',
+    'Subrahmanyan Chandrasekhar|Chandrasekhar', 'Gerard Kuiper|Kuiper', 'Vera Rubin|Rubin',
+    'Giovanni Cassini|Cassini', 'Christiaan Huygens|Huygens', 'Charles Messier|Messier',
+    'Clyde Tombaugh|Tombaugh', 'Arthur Eddington|Eddington',
+    'Henrietta Swan Leavitt|Leavitt|Henrietta Leavitt', 'Annie Jump Cannon|Cannon',
+    'Jocelyn Bell Burnell|Bell Burnell', 'Urbain Le Verrier|Le Verrier|Leverrier',
+    'Johann Galle|Galle', 'Brahmagupta', 'Percival Lowell|Lowell', 'Frank Drake|Drake',
+    'Hipparchus', 'Cecilia Payne-Gaposchkin|Payne-Gaposchkin|Cecilia Payne',
+  ]),
+  ranked('galaxies', 'medium', 'Name a galaxy.', [
+    'Milky Way', 'Andromeda|Andromeda Galaxy|M31', 'Triangulum|Triangulum Galaxy|M33',
+    'Large Magellanic Cloud|LMC', 'Small Magellanic Cloud|SMC', 'Whirlpool|Whirlpool Galaxy|M51',
+    'Sombrero|Sombrero Galaxy|M104', 'Pinwheel|Pinwheel Galaxy|M101', 'Messier 87|M87',
+    'Cartwheel|Cartwheel Galaxy', 'Black Eye|Black Eye Galaxy|M64', 'Cigar|Cigar Galaxy|M82',
+    "Bode's Galaxy|M81", 'Centaurus A', 'Sunflower|Sunflower Galaxy|M63',
+    'Tadpole|Tadpole Galaxy', 'Antennae|Antennae Galaxies',
+    'Sagittarius Dwarf|Sagittarius Dwarf Galaxy', 'IC 1101', "Hoag's Object",
+  ]),
+  ranked('isro-missions', 'medium', 'Name an ISRO mission or satellite (past or planned).', [
+    'Chandrayaan|Chandrayaan-1|Chandrayaan-2|Chandrayaan-3',
+    'Mangalyaan|Mars Orbiter Mission|MOM', 'Aditya-L1|Aditya', 'Gaganyaan',
+    'Aryabhata', 'AstroSat', 'NISAR', 'XPoSat', 'SpaDeX', 'Cartosat', 'RISAT', 'INSAT',
+    'GSAT', 'NavIC|IRNSS', 'Oceansat', 'Kalpana-1|METSAT', 'Rohini', 'Bhaskara',
+    'Shukrayaan',
+  ]),
+
+  // ---------- Hard ----------
+  ranked('uranus-moons', 'hard', 'Name a moon of Uranus.', [
+    'Miranda', 'Titania', 'Oberon', 'Ariel', 'Umbriel', 'Puck', 'Cordelia', 'Ophelia',
+    'Bianca', 'Cressida', 'Desdemona', 'Juliet', 'Portia', 'Rosalind', 'Belinda', 'Perdita',
+    'Mab', 'Cupid', 'Caliban', 'Sycorax', 'Prospero', 'Setebos', 'Stephano', 'Trinculo',
+    'Francisco', 'Margaret', 'Ferdinand',
+  ]),
+  ranked('neptune-moons', 'hard', 'Name a moon of Neptune.', [
+    'Triton', 'Nereid', 'Proteus', 'Larissa', 'Galatea', 'Despina', 'Thalassa', 'Naiad',
+    'Halimede', 'Sao', 'Laomedeia', 'Psamathe', 'Neso', 'Hippocamp',
+  ]),
+  ranked('golden-record-music', 'hard', 'Name a composer or musician whose music is on the Voyager Golden Record.', [
+    'Johann Sebastian Bach|Bach|J.S. Bach', 'Ludwig van Beethoven|Beethoven',
+    'Wolfgang Amadeus Mozart|Mozart', 'Chuck Berry|Berry', 'Igor Stravinsky|Stravinsky',
+    'Louis Armstrong|Armstrong', 'Blind Willie Johnson', 'Kesarbai Kerkar|Kerkar',
+    'Valya Balkanska|Balkanska', 'Guan Pinghu', 'Anthony Holborne|Holborne',
+  ]),
 ];
